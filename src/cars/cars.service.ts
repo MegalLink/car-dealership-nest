@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Car } from './interfaces/car.interface';
 import { v5 } from 'uuid';
 import { randomUUID } from 'crypto';
+import { CreateCarDto } from './dto/create-car.dto';
+import { UpdateCarDto } from './dto/update-car.dto';
 
 @Injectable()
 export class CarsService {
@@ -28,6 +30,38 @@ export class CarsService {
   }
 
   getCarById(id: string): Car {
-    return this.cars.find((obj) => obj.id === id);
+    const car = this.cars.find((obj) => obj.id === id);
+    if (!car) throw new NotFoundException(`Car with id ${id} not found`);
+
+    return car;
+  }
+
+  createCar(createCar: CreateCarDto): Car {
+    const newCar = { id: randomUUID(), ...createCar };
+    this.cars.push(newCar);
+    return newCar;
+  }
+
+  updateCar(id: string, updateCarDto: UpdateCarDto): Car {
+    const index = this.cars.findIndex((car) => car.id === id);
+    if (index === -1) {
+      throw new NotFoundException(`Not found car with id ${id} to update`);
+    }
+
+    const updatedCar: Car = { ...this.cars[index], ...updateCarDto };
+
+    this.cars[index] = updatedCar;
+
+    return updatedCar;
+  }
+
+  deleteCar(id: string): Car {
+    const index = this.cars.findIndex((obj) => obj.id === id);
+    if (index === -1)
+      throw new NotFoundException(`Car with id ${id} not found`);
+
+    const removedElements = this.cars.splice(index, 1);
+
+    return removedElements[0];
   }
 }

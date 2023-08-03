@@ -11,7 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CarsService } from './cars.service';
-import { CreateCarDto } from './dto/create-car.dto';
+import { CreateCarDto, UpdateCarDto } from './dto';
 
 @Controller('cars')
 export class CarsController {
@@ -25,34 +25,23 @@ export class CarsController {
   @Get(':id')
   getCarById(@Param('id', new ParseUUIDPipe()) id: string) {
     const car = this._carsSvc.getCarById(id);
-    console.log('car', car);
-    if (!car) throw new NotFoundException(`Car with id ${id} not found`);
-
     return car;
   }
 
   @Post()
   createCar(@Body() carDto: CreateCarDto) {
     console.log('Body', carDto);
-    return {
-      ok: true,
-      ...carDto,
-    };
+    return this._carsSvc.createCar(carDto);
   }
 
   @Patch(':id')
-  updateCar(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
-    console.log('Body', typeof body, 'ID:', id);
-    return {
-      ok: true,
-    };
+  updateCar(@Param('id') id: string, @Body() updateCarDto: UpdateCarDto) {
+    return this._carsSvc.updateCar(id, updateCarDto);
   }
 
   @Delete(':id')
-  deleteCar(@Param('id', ParseIntPipe) id: number): object {
+  deleteCar(@Param('id') id: string): object {
     console.log('ID:', id);
-    return {
-      ok: true,
-    };
+    return this._carsSvc.deleteCar(id);
   }
 }
