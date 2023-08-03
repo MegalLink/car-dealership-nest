@@ -6,10 +6,12 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import { CarsService } from './cars.service';
+import { CreateCarDto } from './dto/create-car.dto';
 
 @Controller('cars')
 export class CarsController {
@@ -21,7 +23,7 @@ export class CarsController {
   }
 
   @Get(':id')
-  getCarById(@Param('id', ParseIntPipe) id: number) {
+  getCarById(@Param('id', new ParseUUIDPipe()) id: string) {
     const car = this._carsSvc.getCarById(id);
     console.log('car', car);
     if (!car) throw new NotFoundException(`Car with id ${id} not found`);
@@ -30,10 +32,11 @@ export class CarsController {
   }
 
   @Post()
-  createCar(@Body() body: any) {
-    console.log('Body', typeof body);
+  createCar(@Body() carDto: CreateCarDto) {
+    console.log('Body', carDto);
     return {
       ok: true,
+      ...carDto,
     };
   }
 
