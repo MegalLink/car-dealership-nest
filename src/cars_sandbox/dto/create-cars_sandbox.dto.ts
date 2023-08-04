@@ -1,6 +1,6 @@
 import { IsString, MinLength } from 'class-validator';
 
-export class CreateCarDto {
+export class CreateCarsSandboxDto {
   @IsString()
   readonly brand: string;
   @IsString()

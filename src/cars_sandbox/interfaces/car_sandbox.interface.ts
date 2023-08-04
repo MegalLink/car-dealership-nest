@@ -1,4 +1,4 @@
-export interface Car {
+export interface CarSandbox {
   id: string;
   brand: string;
   model: string;
