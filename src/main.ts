@@ -11,6 +11,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true, // thwo error with extra properties not declared in dto
     }),
   );
+
+  app.setGlobalPrefix('api/v1/');
+
   await app.listen(3000);
 }
 

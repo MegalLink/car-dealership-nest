@@ -4,6 +4,7 @@ import { CarsSandboxModule } from './cars_sandbox/cars_sandbox.module';
 import { CarsSeedModule } from './cars_seed/cars_seed.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { CarsModule } from './cars/cars.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { join } from 'path';
     }),
     CarsSandboxModule,
     CarsSeedModule,
+    CarsModule,
   ],
   controllers: [],
   providers: [],
