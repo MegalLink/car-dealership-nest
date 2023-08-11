@@ -31,6 +31,11 @@ export class PokemonController {
     return this.pokemonService.findAll();
   }
 
+  @Get('seed')
+  fillDatabase() {
+    return this.pokemonService.fillDatabase();
+  }
+
   @Get(':pokeID')
   findOne(@Param('pokeID', new ParseIntPipe()) pokemondID: number) {
     return this.pokemonService.findOne(pokemondID);

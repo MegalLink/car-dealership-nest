@@ -6,13 +6,42 @@ import {
 } from '@nestjs/common';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
-import { Model } from 'mongoose';
+import {
+  AnyObject,
+  Document,
+  DocumentSetOptions,
+  Error,
+  FlattenMaps,
+  MergeType,
+  Model,
+  PathsToValidate,
+  PopulateOptions,
+  Query,
+  QueryOptions,
+  Require_id,
+  SaveOptions,
+  ToObjectOptions,
+  UpdateQuery,
+  UpdateWithAggregationPipeline,
+  pathsToSkip,
+} from 'mongoose';
 import { PokemonMongo } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { json } from 'stream/consumers';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import {
+  PokemonResponse,
+  PokemonsResponse,
+  PokemonsResponseResult,
+} from './interfaces/poke-response.interface';
+import { of, forkJoin } from 'rxjs';
+import { mergeMap, catchError } from 'rxjs/operators';
+import { error } from 'console';
 
 @Injectable()
 export class PokemonService {
+  private readonly _axios: AxiosInstance = axios;
+
   constructor(
     @InjectModel(PokemonMongo.name)
     private readonly _pokemonModel: Model<PokemonMongo>,
@@ -88,10 +117,71 @@ export class PokemonService {
   }
 
   async remove(mongoID: string) {
+    // TODO: use findOneAndDelete
     const pokemonKey = { _id: mongoID };
     const pokemon = await this._finPokemonBy(pokemonKey);
     pokemon.deleteOne();
 
     return pokemon;
+  }
+
+  async fillDatabase() {
+    return of(true).pipe(
+      mergeMap(() => {
+        return this._axios.get<PokemonsResponse>(
+          'https://pokeapi.co/api/v2/pokemon?offset=0&limit=10',
+        );
+      }),
+      mergeMap((result: AxiosResponse<PokemonsResponse>) => {
+        return of(result.data.results);
+      }),
+      mergeMap((results: PokemonsResponseResult[]) => {
+        const obs = results.map((result) => {
+          return this._axios.get<PokemonResponse>(result.url);
+        });
+
+        return forkJoin(obs);
+      }),
+      mergeMap((response: AxiosResponse<PokemonResponse>[]) => {
+        const mappedResponse: object = response.map(
+          ({ data }: AxiosResponse<PokemonResponse>) => {
+            // TODO: refactor mongo Class
+            const pokemon_mongo: object = {
+              name: data.name,
+              pokeID: data.id,
+              types: [],
+              hp: 0,
+              attack: 0,
+              defense: 0,
+            };
+
+            return pokemon_mongo;
+          },
+        );
+
+        return of(mappedResponse);
+      }),
+      mergeMap((data: Array<object>) => {
+        return this._pokemonModel.insertMany(data);
+      }),
+      catchError((error) => {
+        {
+          console.log('errror', error);
+          if (error.code === 11000) {
+            throw new BadRequestException(
+              `Error loading seed pokemons,Pokemon with unique value exists in db  ${JSON.stringify(
+                error,
+              )}`,
+            );
+          }
+
+          throw new InternalServerErrorException(
+            `Pokemon Service - load seed error ${JSON.stringify(
+              error.writeErrors,
+            )}`,
+          );
+        }
+      }),
+    );
   }
 }
