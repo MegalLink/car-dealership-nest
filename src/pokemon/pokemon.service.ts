@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
@@ -18,8 +19,6 @@ export class PokemonService {
   ) {}
 
   async create(createPokemonDto: CreatePokemonDto) {
-    console.log('CreatePokemon', createPokemonDto);
-
     try {
       const pokemon = await this._pokemonModel.create(createPokemonDto);
       return pokemon;
@@ -29,26 +28,70 @@ export class PokemonService {
           `Pokemon exists in db ${JSON.stringify(error.keyValue)}`,
         );
       }
-      console.error(error);
       throw new InternalServerErrorException(
-        `Can't create Pokemon - Check logs`,
+        `Pokemon Service - create error ${JSON.stringify(error)}`,
       );
     }
   }
 
+  private async _finPokemonBy(pokemonKey: object): Promise<PokemonMongo> {
+    let pokemon: PokemonMongo;
+    try {
+      pokemon = await this._pokemonModel.findOne(pokemonKey);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Pokemon Service - finPokemonBy error ${JSON.stringify(error)}`,
+      );
+    }
+
+    if (!pokemon)
+      throw new NotFoundException(
+        `Pokemon with pokeID: ${JSON.stringify(pokemonKey)} not found`,
+      );
+
+    return pokemon;
+  }
+
   findAll() {
-    return `This action returns all pokemon`;
+    const pokemons = this._pokemonModel.find();
+    return pokemons;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} pokemon`;
+  async findOne(pokeID: number) {
+    const pokemonKey = { pokeID: pokeID };
+    return this._finPokemonBy(pokemonKey);
   }
 
-  update(id: number, updatePokemonDto: UpdatePokemonDto) {
-    return `This action updates a #${id} pokemon`;
+  async update(id: number, updatePokemonDto: UpdatePokemonDto) {
+    const pokemon: PokemonMongo = await this.findOne(id);
+
+    if (updatePokemonDto.name) {
+      updatePokemonDto.name = updatePokemonDto.name.toLocaleLowerCase();
+    }
+    try {
+      await pokemon.updateOne(updatePokemonDto);
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new BadRequestException(
+          `Error updating pokemon,Pokemon with unique value exists in db  ${JSON.stringify(
+            error.keyValue,
+          )}`,
+        );
+      }
+
+      throw new InternalServerErrorException(
+        `Pokemon Service - update error ${JSON.stringify(error)}`,
+      );
+    }
+
+    return { ...pokemon.toObject(), ...updatePokemonDto };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} pokemon`;
+  async remove(mongoID: string) {
+    const pokemonKey = { _id: mongoID };
+    const pokemon = await this._finPokemonBy(pokemonKey);
+    pokemon.deleteOne();
+
+    return pokemon;
   }
 }

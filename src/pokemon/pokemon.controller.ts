@@ -8,10 +8,13 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { PokemonService } from './pokemon.service';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { PokemonMongo } from './entities/pokemon.entity';
+import { ParseMongoIdPipe } from 'src/common/pipes/parse-mongo-id/parse-mongo-id.pipe';
 
 @Controller('pokemon')
 export class PokemonController {
@@ -28,9 +31,9 @@ export class PokemonController {
     return this.pokemonService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pokemonService.findOne(+id);
+  @Get(':pokeID')
+  findOne(@Param('pokeID', new ParseIntPipe()) pokemondID: number) {
+    return this.pokemonService.findOne(pokemondID);
   }
 
   @Patch(':id')
@@ -38,8 +41,8 @@ export class PokemonController {
     return this.pokemonService.update(+id, updatePokemonDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.pokemonService.remove(+id);
+  @Delete(':mongoID')
+  remove(@Param('mongoID', new ParseMongoIdPipe()) id: string) {
+    return this.pokemonService.remove(id);
   }
 }
