@@ -129,7 +129,7 @@ export class PokemonService {
     return of(true).pipe(
       mergeMap(() => {
         return this._axios.get<PokemonsResponse>(
-          'https://pokeapi.co/api/v2/pokemon?offset=0&limit=10',
+          'https://pokeapi.co/api/v2/pokemon?offset=0&limit=2',
         );
       }),
       mergeMap((result: AxiosResponse<PokemonsResponse>) => {
@@ -146,6 +146,8 @@ export class PokemonService {
         const mappedResponse: object = response.map(
           ({ data }: AxiosResponse<PokemonResponse>) => {
             // TODO: refactor mongo Class
+
+            console.log('Api object', JSON.stringify(data));
             const pokemon_mongo: object = {
               name: data.name,
               pokeID: data.id,
@@ -162,7 +164,8 @@ export class PokemonService {
         return of(mappedResponse);
       }),
       mergeMap((data: Array<object>) => {
-        return this._pokemonModel.insertMany(data);
+        console.log('Data to put in db', data);
+        return this._pokemonModel.insertMany([]);
       }),
       catchError((error) => {
         {
