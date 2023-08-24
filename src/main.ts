@@ -9,6 +9,10 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true, // remove thrash data from dto in request
       forbidNonWhitelisted: true, // thwo error with extra properties not declared in dto
+      transform: true, // add this and options to admit the transformation of parameters to type implicit in dto
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }),
   );
 

@@ -18,6 +18,7 @@ import { of, forkJoin } from 'rxjs';
 import { mergeMap, catchError } from 'rxjs/operators';
 import { AxiosAdapter } from 'src/common/adapters/axios.adapter';
 import { Axios, AxiosResponse } from 'axios';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class PokemonService {
@@ -61,8 +62,17 @@ export class PokemonService {
     return pokemon;
   }
 
-  findAll() {
-    const pokemons = this._pokemonModel.find();
+  findAll(queryParameters: PaginationDto) {
+    const { limit = 10, offset = 0 } = queryParameters;
+
+    const pokemons = this._pokemonModel
+      .find()
+      .limit(limit)
+      .skip(offset)
+      .sort({
+        pokeID: 1,
+      })
+      .select('-__v');
     return pokemons;
   }
 
