@@ -6,29 +6,9 @@ import {
 } from '@nestjs/common';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
-import {
-  AnyObject,
-  Document,
-  DocumentSetOptions,
-  Error,
-  FlattenMaps,
-  MergeType,
-  Model,
-  PathsToValidate,
-  PopulateOptions,
-  Query,
-  QueryOptions,
-  Require_id,
-  SaveOptions,
-  ToObjectOptions,
-  UpdateQuery,
-  UpdateWithAggregationPipeline,
-  pathsToSkip,
-} from 'mongoose';
+import { Model } from 'mongoose';
 import { PokemonMongo } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
-import { json } from 'stream/consumers';
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import {
   PokemonResponse,
   PokemonsResponse,
@@ -36,13 +16,13 @@ import {
 } from './interfaces/poke-response.interface';
 import { of, forkJoin } from 'rxjs';
 import { mergeMap, catchError } from 'rxjs/operators';
-import { error } from 'console';
+import { AxiosAdapter } from 'src/common/adapters/axios.adapter';
+import { Axios, AxiosResponse } from 'axios';
 
 @Injectable()
 export class PokemonService {
-  private readonly _axios: AxiosInstance = axios;
-
   constructor(
+    private readonly _axiosAdapter: AxiosAdapter,
     @InjectModel(PokemonMongo.name)
     private readonly _pokemonModel: Model<PokemonMongo>,
   ) {}
@@ -128,44 +108,42 @@ export class PokemonService {
   async fillDatabase() {
     return of(true).pipe(
       mergeMap(() => {
-        return this._axios.get<PokemonsResponse>(
+        return this._axiosAdapter.get<PokemonsResponse>(
           'https://pokeapi.co/api/v2/pokemon?offset=0&limit=2',
         );
       }),
-      mergeMap((result: AxiosResponse<PokemonsResponse>) => {
-        return of(result.data.results);
+      mergeMap((result: PokemonsResponse) => {
+        return of(result.results);
       }),
       mergeMap((results: PokemonsResponseResult[]) => {
         const obs = results.map((result) => {
-          return this._axios.get<PokemonResponse>(result.url);
+          return this._axiosAdapter.get<PokemonResponse>(result.url);
         });
 
         return forkJoin(obs);
       }),
-      mergeMap((response: AxiosResponse<PokemonResponse>[]) => {
-        const mappedResponse: object = response.map(
-          ({ data }: AxiosResponse<PokemonResponse>) => {
-            // TODO: refactor mongo Class
+      mergeMap((response: PokemonResponse[]) => {
+        const mappedResponse: object = response.map((data: PokemonResponse) => {
+          // TODO: refactor mongo Class
 
-            console.log('Api object', JSON.stringify(data));
-            const pokemon_mongo: object = {
-              name: data.name,
-              pokeID: data.id,
-              types: [],
-              hp: 0,
-              attack: 0,
-              defense: 0,
-            };
+          console.log('Api object', JSON.stringify(data));
+          const pokemon_mongo: object = {
+            name: data.name,
+            pokeID: data.id,
+            types: [],
+            hp: 0,
+            attack: 0,
+            defense: 0,
+          };
 
-            return pokemon_mongo;
-          },
-        );
+          return pokemon_mongo;
+        });
 
         return of(mappedResponse);
       }),
       mergeMap((data: Array<object>) => {
         console.log('Data to put in db', data);
-        return this._pokemonModel.insertMany([]);
+        return this._pokemonModel.insertMany(data);
       }),
       catchError((error) => {
         {
